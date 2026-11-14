@@ -1,0 +1,75 @@
+
+# ==============================
+# Visual Studio
+# ==============================
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# ==============================
+# Compilación .NET
+# ==============================
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa]rtifacts/
+
+# ==============================
+# Archivos temporales
+# ==============================
+*.tmp
+*.temp
+*.log
+*.cache
+*.bak
+*.swp
+
+# ==============================
+# Configuración local y secretos
+# ==============================
+appsettings.Development.json
+appsettings.Local.json
+.env
+.env.*
+!.env.example
+secrets.json
+
+# ==============================
+# Certificados y claves privadas
+# ==============================
+*.pfx
+*.p12
+*.key
+*.pem
+
+# ==============================
+# NuGet
+# ==============================
+*.nupkg
+*.snupkg
+packages/
+
+# ==============================
+# Cobertura de pruebas
+# ==============================
+coverage/
+coverage.*
+TestResults/
+
+# ==============================
+# Rider / JetBrains
+# ==============================
+.idea/
+*.sln.iml
+
+# ==============================
+# Sistema operativo
+# ==============================
+.DS_Store
+Thumbs.db
+Desktop.ini
