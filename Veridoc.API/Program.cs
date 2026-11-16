@@ -2,6 +2,8 @@ using System.Reflection;
 using Microsoft.AspNetCore.Mvc;
 using Veridoc.API.DTOs;
 using Veridoc.API.Middlewares;
+using Veridoc.API.Services;
+using Veridoc.API.Validators;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,7 +26,12 @@ builder.Services
         };
     });
 
-// 2. Configuración de CORS para permitir que la interfaz de demostración consuma la API
+// 2. Registro de validadores de documentos y servicio orquestador de validaciones
+builder.Services.AddSingleton<IDocumentValidator, CedulaIdentidadValidator>();
+builder.Services.AddSingleton<IDocumentValidator, FacturaComercialValidator>();
+builder.Services.AddScoped<IValidationService, ValidationService>();
+
+// 3. Configuración de CORS para permitir que la interfaz de demostración consuma la API
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("DemoClientPolicy", policy =>
@@ -35,7 +42,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-// 3. Configuración de OpenAPI / Swagger incluyendo comentarios XML de documentación
+// 4. Configuración de OpenAPI / Swagger incluyendo comentarios XML de documentación
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -49,7 +56,7 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-// 4. Tubería (Pipeline) de procesamiento HTTP
+// 5. Tubería (Pipeline) de procesamiento HTTP
 // El middleware de excepciones va primero para envolver todo el procesamiento posterior
 app.UseMiddleware<GlobalExceptionMiddleware>();
 

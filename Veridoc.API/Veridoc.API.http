@@ -1,6 +1,85 @@
-@Veridoc.API_HostAddress = http://localhost:5197
+@Veridoc.API_HostAddress = http://localhost:5222
+@ApiKey = veridoc-dev-key-2026
 
-GET {{Veridoc.API_HostAddress}}/weatherforecast/
+### 1. Comprobar estado del servicio (Público)
+GET {{Veridoc.API_HostAddress}}/api/health
 Accept: application/json
 
-###
+### 2. Consultar tipos de documentos soportados y catálogo de reglas
+GET {{Veridoc.API_HostAddress}}/api/validations/document-types
+Accept: application/json
+X-Api-Key: {{ApiKey}}
+
+### 3. Validar Cédula de Identidad VÁLIDA
+POST {{Veridoc.API_HostAddress}}/api/validations
+Content-Type: application/json
+X-Api-Key: {{ApiKey}}
+
+{
+  "documentType": "cedula_identidad",
+  "document": {
+    "numeroCedula": "8-888-8888",
+    "nombreCompleto": "Juan Carlos Pérez Gómez",
+    "fechaNacimiento": "1995-05-15",
+    "fechaExpedicion": "2022-06-01",
+    "fechaExpiracion": "2032-06-01",
+    "nacionalidad": "Panameña"
+  }
+}
+
+### 4. Validar Cédula de Identidad INVÁLIDA (Formato incorrecto, menor de edad y vencida)
+POST {{Veridoc.API_HostAddress}}/api/validations
+Content-Type: application/json
+X-Api-Key: {{ApiKey}}
+
+{
+  "documentType": "cedula_identidad",
+  "document": {
+    "numeroCedula": "99-ABC-123",
+    "nombreCompleto": "Ana López",
+    "fechaNacimiento": "2012-08-20",
+    "fechaExpedicion": "2024-01-10",
+    "fechaExpiracion": "2023-01-10",
+    "nacionalidad": "Panameña"
+  }
+}
+
+### 5. Validar Factura Comercial VÁLIDA (con 7% ITBMS)
+POST {{Veridoc.API_HostAddress}}/api/validations
+Content-Type: application/json
+X-Api-Key: {{ApiKey}}
+
+{
+  "documentType": "factura_comercial",
+  "document": {
+    "numeroFactura": "FAC-0001",
+    "rucEmisor": "1556789-1-700123",
+    "nombreCliente": "Distribuidora Istmeña S.A.",
+    "fechaEmision": "2026-02-01",
+    "fechaVencimiento": "2026-03-01",
+    "subtotal": 100.00,
+    "itbms": 7.00,
+    "total": 107.00,
+    "moneda": "USD"
+  }
+}
+
+### 6. Validar Factura Comercial INVÁLIDA (Total inconsistente e ITBMS incorrecto)
+POST {{Veridoc.API_HostAddress}}/api/validations
+Content-Type: application/json
+X-Api-Key: {{ApiKey}}
+
+{
+  "documentType": "factura_comercial",
+  "document": {
+    "numeroFactura": "0001",
+    "rucEmisor": "1556789-1-700123",
+    "nombreCliente": "Distribuidora Istmeña S.A.",
+    "fechaEmision": "2026-03-10",
+    "fechaVencimiento": "2026-02-01",
+    "subtotal": 100.00,
+    "itbms": 15.00,
+    "total": 120.00,
+    "moneda": "EUR"
+  }
+}
