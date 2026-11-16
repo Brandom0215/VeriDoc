@@ -83,3 +83,8 @@ X-Api-Key: {{ApiKey}}
     "moneda": "EUR"
   }
 }
+
+### 7. Consultar historial de validaciones en PostgreSQL
+GET {{Veridoc.API_HostAddress}}/api/validations/history?limit=10
+Accept: application/json
+X-Api-Key: {{ApiKey}}

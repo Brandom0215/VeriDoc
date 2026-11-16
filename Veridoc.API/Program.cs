@@ -1,5 +1,7 @@
 using System.Reflection;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Veridoc.API.Data;
 using Veridoc.API.DTOs;
 using Veridoc.API.Middlewares;
 using Veridoc.API.Services;
@@ -26,12 +28,20 @@ builder.Services
         };
     });
 
-// 2. Registro de validadores de documentos y servicio orquestador de validaciones
+// 2. Configuración de Entity Framework Core con PostgreSQL
+string? postgreSqlConnection = builder.Configuration.GetConnectionString("PostgreSqlConnection");
+if (!string.IsNullOrWhiteSpace(postgreSqlConnection))
+{
+    builder.Services.AddDbContext<VeridocDbContext>(options =>
+        options.UseNpgsql(postgreSqlConnection));
+}
+
+// 3. Registro de validadores de documentos y servicio orquestador de validaciones
 builder.Services.AddSingleton<IDocumentValidator, CedulaIdentidadValidator>();
 builder.Services.AddSingleton<IDocumentValidator, FacturaComercialValidator>();
 builder.Services.AddScoped<IValidationService, ValidationService>();
 
-// 3. Configuración de CORS para permitir que la interfaz de demostración consuma la API
+// 4. Configuración de CORS para permitir que la interfaz de demostración consuma la API
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("DemoClientPolicy", policy =>
@@ -42,7 +52,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-// 4. Configuración de OpenAPI / Swagger incluyendo comentarios XML de documentación
+// 5. Configuración de OpenAPI / Swagger incluyendo comentarios XML de documentación
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -56,7 +66,10 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-// 5. Tubería (Pipeline) de procesamiento HTTP
+// 6. Inicialización resiliente del esquema y catálogo de reglas en PostgreSQL
+await DbInitializer.TryInitializeAsync(app.Services);
+
+// 7. Tubería (Pipeline) de procesamiento HTTP
 // El middleware de excepciones va primero para envolver todo el procesamiento posterior
 app.UseMiddleware<GlobalExceptionMiddleware>();
 

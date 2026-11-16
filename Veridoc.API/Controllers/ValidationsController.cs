@@ -5,7 +5,8 @@ using Veridoc.API.Services;
 namespace Veridoc.API.Controllers;
 
 /// <summary>
-/// Controlador REST encargado de exponer los endpoints de validación documental y consulta de reglas soportadas.
+/// Controlador REST encargado de exponer los endpoints de validación documental, consulta de reglas soportadas
+/// e historial de auditoría en PostgreSQL.
 /// Mantiene responsabilidades delgadas delegando la lógica de negocio a <see cref="IValidationService"/>.
 /// </summary>
 [ApiController]
@@ -71,5 +72,26 @@ public class ValidationsController : ControllerBase
     {
         IReadOnlyList<DocumentTypeMetadataDto> documentTypes = _validationService.GetSupportedDocumentTypes();
         return Ok(documentTypes);
+    }
+
+    /// <summary>
+    /// Consulta el historial reciente de validaciones almacenado en PostgreSQL (sin datos personales de los documentos).
+    /// </summary>
+    /// <param name="limit">Cantidad máxima de registros a consultar (por defecto 20, máximo 100).</param>
+    /// <param name="cancellationToken">Token de cancelación de la petición HTTP.</param>
+    /// <returns>Lista de ejecuciones de validación registradas en la base de datos.</returns>
+    [HttpGet("history")]
+    [ProducesResponseType(typeof(IReadOnlyList<ValidationHistoryItemDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorResponseDto), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorResponseDto), StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<IReadOnlyList<ValidationHistoryItemDto>>> GetValidationHistory(
+        [FromQuery] int limit = 20,
+        CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<ValidationHistoryItemDto> history = await _validationService.GetValidationHistoryAsync(
+            limit,
+            cancellationToken);
+
+        return Ok(history);
     }
 }
