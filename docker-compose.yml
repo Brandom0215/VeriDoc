@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  veridoc-postgres:
+    image: postgres:16-alpine
+    container_name: veridoc-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: veridoc_db
+      POSTGRES_USER: veridoc_user
+      POSTGRES_PASSWORD: ${VERIDOC_DB_PASSWORD:-veridoc_local_pwd_2026}
+    ports:
+      - "5432:5432"
+    volumes:
+      - veridoc_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U veridoc_user -d veridoc_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  veridoc_pgdata:
