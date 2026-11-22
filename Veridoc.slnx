@@ -1,3 +1,5 @@
+
 <Solution>
   <Project Path="Veridoc.API/Veridoc.API.csproj" />
+  <Project Path="Veridoc.Tests/Veridoc.Tests.csproj" />
 </Solution>
