@@ -1,6 +1,7 @@
 using System.Reflection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi;
 using Veridoc.API.Data;
 using Veridoc.API.DTOs;
 using Veridoc.API.Middlewares;
@@ -53,10 +54,30 @@ builder.Services.AddCors(options =>
     });
 });
 
-// 5. Configuración de OpenAPI / Swagger incluyendo comentarios XML de documentación
+// 5. Configuración de OpenAPI / Swagger incluyendo comentarios XML y esquema de seguridad X-Api-Key
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Veridoc API",
+        Version = "v1",
+        Description = "Servicio RESTful para validación de documentos estructurados en JSON mediante reglas de negocio programadas."
+    });
+
+    options.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
+    {
+        Description = "Ingrese su clave de acceso para la cabecera X-Api-Key (Ejemplo local: veridoc-dev-key-2026).",
+        Name = ApiKeyAuthMiddleware.ApiKeyHeaderName,
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey
+    });
+
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference("ApiKey", document)] = new List<string>()
+    });
+
     var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFilename);
     if (File.Exists(xmlPath))
