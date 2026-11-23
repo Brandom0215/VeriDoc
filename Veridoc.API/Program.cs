@@ -41,14 +41,15 @@ builder.Services.AddSingleton<IDocumentValidator, CedulaIdentidadValidator>();
 builder.Services.AddSingleton<IDocumentValidator, FacturaComercialValidator>();
 builder.Services.AddScoped<IValidationService, ValidationService>();
 
-// 4. Configuración de CORS para permitir que la interfaz de demostración consuma la API
+// 4. Configuración de CORS para permitir que la interfaz de demostración externa consuma la API
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("DemoClientPolicy", policy =>
     {
         policy.AllowAnyOrigin()
               .AllowAnyMethod()
-              .WithHeaders("Content-Type", ApiKeyAuthMiddleware.ApiKeyHeaderName, "X-Correlation-Id");
+              .WithHeaders("Content-Type", ApiKeyAuthMiddleware.ApiKeyHeaderName, "X-Correlation-Id")
+              .WithExposedHeaders("X-Correlation-Id");
     });
 });
 
@@ -78,8 +79,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-app.UseHttpsRedirection();
+else
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseCors("DemoClientPolicy");
 

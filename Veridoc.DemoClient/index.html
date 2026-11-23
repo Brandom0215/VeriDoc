@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Veridoc — Cliente de Demostración de API</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <!-- Encabezado principal del cliente desacoplado -->
+    <header class="app-header">
+        <div class="container header-content">
+            <div>
+                <span class="badge-pill">Cliente Externo Desacoplado</span>
+                <h1>Veridoc API — Consola de Demostración</h1>
+                <p class="subtitle">
+                    Interfaz ligera para enviar documentos JSON a <code>Veridoc.API</code> y visualizar resultados de validación sin lógica de negocio en el frontend.
+                </p>
+            </div>
+            <div class="health-box">
+                <span id="healthIndicator" class="status-dot dot-neutral"></span>
+                <span id="healthText">Estado API: Sin verificar</span>
+                <button type="button" id="btnCheckHealth" class="btn btn-outline btn-sm">Verificar /api/health</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container main-grid">
+        <!-- Columna Izquierda: Configuración de conexión, selección de documento y entrada de datos -->
+        <section class="panel">
+            <h2>1. Conexión con Veridoc API</h2>
+            <div class="form-row two-cols">
+                <div class="form-group">
+                    <label for="apiBaseUrl">URL Base de la API</label>
+                    <input type="url" id="apiBaseUrl" value="http://localhost:5197" placeholder="http://localhost:5197" />
+                    <small class="help-text">Perfiles Visual Studio: <code>http://localhost:5197</code> o <code>https://localhost:7077</code></small>
+                </div>
+                <div class="form-group">
+                    <label for="apiKeyInput">Cabecera <code>X-Api-Key</code></label>
+                    <input type="text" id="apiKeyInput" value="veridoc-dev-key-2026" placeholder="Ingrese la X-Api-Key" />
+                    <small class="help-text">Bórrela o cámbiela para probar el bloqueo <code>401 Unauthorized</code>.</small>
+                </div>
+            </div>
+
+            <hr class="divider" />
+
+            <h2>2. Selección de Documento y Casos de Prueba</h2>
+            <div class="form-group">
+                <label for="documentTypeSelect">Tipo de Documento (<code>documentType</code>)</label>
+                <select id="documentTypeSelect">
+                    <option value="cedula_identidad">Cédula de Identidad / Datos Personales (cedula_identidad)</option>
+                    <option value="factura_comercial">Factura Comercial (factura_comercial)</option>
+                    <option value="pasaporte">Tipo No Soportado — Prueba de Guardarraíl (pasaporte)</option>
+                </select>
+            </div>
+
+            <div class="presets-bar">
+                <span class="presets-label">Cargar caso de ejemplo (Ficticio):</span>
+                <div class="preset-buttons">
+                    <button type="button" class="btn btn-preset" data-preset="cedula_valida">Cédula Válida</button>
+                    <button type="button" class="btn btn-preset btn-preset-warn" data-preset="cedula_invalida">Cédula Inválida</button>
+                    <button type="button" class="btn btn-preset" data-preset="factura_valida">Factura Válida (7%)</button>
+                    <button type="button" class="btn btn-preset btn-preset-warn" data-preset="factura_invalida">Factura Inválida</button>
+                    <button type="button" class="btn btn-preset btn-preset-err" data-preset="json_malformado">JSON Mal Formado (400)</button>
+                </div>
+            </div>
+
+            <!-- Pestañas de modo de captura: Formulario vs JSON crudo -->
+            <div class="mode-tabs">
+                <button type="button" id="tabFormMode" class="tab-btn active">Formulario de Campos</button>
+                <button type="button" id="tabJsonMode" class="tab-btn">Editor JSON Directo (Payload HTTP)</button>
+            </div>
+
+            <!-- Contenedor dinámico de campos generados según el tipo de documento -->
+            <div id="dynamicFormContainer" class="dynamic-form"></div>
+
+            <!-- Editor JSON crudo para inspeccionar o enviar JSON mal formado en pruebas -->
+            <div id="rawJsonContainer" class="hidden">
+                <div class="form-group">
+                    <label for="rawJsonTextarea">Cuerpo JSON que se enviará a <code>POST /api/validations</code></label>
+                    <textarea id="rawJsonTextarea" rows="13" spellcheck="false"></textarea>
+                </div>
+            </div>
+
+            <div class="actions-bar">
+                <button type="button" id="btnValidate" class="btn btn-primary">Enviar a Veridoc API y Validar</button>
+                <button type="button" id="btnLoadCatalog" class="btn btn-outline">Ver Catálogo de Reglas</button>
+                <button type="button" id="btnLoadHistory" class="btn btn-outline">Historial PostgreSQL</button>
+            </div>
+        </section>
+
+        <!-- Columna Derecha: Visualización del Resultado y Errores por Campo -->
+        <section class="panel">
+            <h2>3. Respuesta de Veridoc API</h2>
+
+            <!-- Metadatos HTTP de la respuesta -->
+            <div id="httpMetaBar" class="http-meta hidden">
+                <div><strong>Estado HTTP:</strong> <span id="httpStatusBadge" class="http-badge">-</span></div>
+                <div><strong>Correlation ID:</strong> <code id="correlationIdText">-</code></div>
+                <div><strong>Tiempo:</strong> <span id="elapsedTimeText">-</span></div>
+            </div>
+
+            <!-- Tarjeta principal de estado de validación -->
+            <div id="resultSummaryCard" class="result-card result-idle">
+                <h3 id="resultTitle">Esperando envío de documento...</h3>
+                <p id="resultDescription">Seleccione un caso de prueba o complete los campos y presione <strong>"Enviar a Veridoc API y Validar"</strong>.</p>
+            </div>
+
+            <!-- Tabla de errores e inconsistencias detectados por el motor de reglas -->
+            <div id="errorsSection" class="hidden">
+                <h3>Campos con Errores o Inconsistencias (<span id="errorCountText">0</span>)</h3>
+                <div class="table-wrapper">
+                    <table class="errors-table">
+                        <thead>
+                            <tr>
+                                <th>Campo</th>
+                                <th>Código de Regla</th>
+                                <th>Mensaje del Backend</th>
+                            </tr>
+                        </thead>
+                        <tbody id="errorsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Panel desplegable con el JSON exacto recibido del backend -->
+            <div class="raw-response-block">
+                <h3>JSON Devuelto por el Servidor</h3>
+                <pre id="responseJsonViewer">{ "//": "Aquí se mostrará la respuesta JSON exacta de Veridoc.API" }</pre>
+            </div>
+
+            <!-- Sección auxiliar para mostrar el Catálogo de Reglas o el Historial de PostgreSQL -->
+            <div id="auxiliaryPanel" class="aux-panel hidden">
+                <h3 id="auxiliaryTitle">Información Adicional</h3>
+                <div id="auxiliaryContent"></div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="container app-footer">
+        <p>
+            <strong>Guardarraíl Funcional:</strong> Veridoc solo comprueba las condiciones expresadas en las reglas implementadas en el backend.
+            No certifica autenticidad legal ni toma decisiones financieras. Datos de prueba 100 % ficticios (Ley 81 de 2019).
+        </p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

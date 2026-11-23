@@ -1,4 +1,4 @@
-@Veridoc.API_HostAddress = http://localhost:5222
+@Veridoc.API_HostAddress = http://localhost:5197
 @ApiKey = veridoc-dev-key-2026
 
 ### 1. Comprobar estado del servicio (Público)
