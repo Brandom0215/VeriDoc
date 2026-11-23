@@ -233,4 +233,23 @@ public class ValidationPipelineAndEdgeCasesTests
 
         Assert.IsType<OkObjectResult>(result);
     }
+
+    /// <summary>
+    /// Caso 37: Verifica que PostgresConnectionStringHelper convierta correctamente una URL de Supabase (postgresql://)
+    /// a una cadena de conexión válida para Npgsql con SSL y soporte para el pooler de Supabase.
+    /// </summary>
+    [Fact]
+    public void PostgresConnectionStringHelper_ValidSupabaseUri_ConvertsToNpgsqlFormat()
+    {
+        const string supabaseUrl = "postgresql://postgres.abcdefg:MiClave%402026@aws-0-us-east-1.pooler.supabase.com:6543/postgres";
+
+        string normalized = PostgresConnectionStringHelper.Normalize(supabaseUrl);
+
+        Assert.Contains("Host=aws-0-us-east-1.pooler.supabase.com", normalized);
+        Assert.Contains("Port=6543", normalized);
+        Assert.Contains("Database=postgres", normalized);
+        Assert.Contains("Username=postgres.abcdefg", normalized);
+        Assert.Contains("Password=MiClave@2026", normalized);
+        Assert.Contains("SSL Mode=Require", normalized);
+    }
 }

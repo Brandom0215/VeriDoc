@@ -1,0 +1,30 @@
+name: Veridoc CI — Build & Tests
+
+on:
+  push:
+    branches: [ "main", "master", "develop" ]
+  pull_request:
+    branches: [ "main", "master", "develop" ]
+
+jobs:
+  build-and-test:
+    name: Compilar y Ejecutar 37 Pruebas (xUnit)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar código del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar SDK de .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restaurar dependencias NuGet
+        run: dotnet restore Veridoc.slnx
+
+      - name: Compilar solución Veridoc
+        run: dotnet build Veridoc.slnx --configuration Release --no-restore
+
+      - name: Ejecutar suite de pruebas automatizadas (Veridoc.Tests)
+        run: dotnet test Veridoc.Tests/Veridoc.Tests.csproj --configuration Release --no-build --verbosity normal
