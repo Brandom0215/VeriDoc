@@ -1,16 +1,25 @@
 using System.Net;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Veridoc.API.DTOs;
 
 namespace Veridoc.API.Middlewares;
 
 /// <summary>
-/// Middleware global encargado de asignar un identificador de correlación a cada solicitud HTTP
-/// y capturar cualquier excepción técnica no controlada para devolver una respuesta JSON segura y estandarizada.
+/// Middleware global encargado de asignar un identificador de correlación seguro a cada solicitud HTTP
+/// y capturar cualquier excepción técnica no controlada para devolver una respuesta JSON estandarizada.
 /// </summary>
-public class GlobalExceptionMiddleware
+public partial class GlobalExceptionMiddleware
 {
     private const string CorrelationHeaderName = "X-Correlation-Id";
+
+    /// <summary>
+    /// Lista blanca estricta para X-Correlation-Id (solo caracteres alfanuméricos, guion y guion bajo, de 1 a 64 caracteres).
+    /// Previene ataques de Log Injection (CRLF Injection) y HTTP Response Splitting.
+    /// </summary>
+    [GeneratedRegex(@"^[a-zA-Z0-9\-_]{1,64}$", RegexOptions.CultureInvariant)]
+    private static partial Regex SafeCorrelationIdRegex();
+
     private readonly RequestDelegate _next;
     private readonly ILogger<GlobalExceptionMiddleware> _logger;
 
@@ -40,7 +49,7 @@ public class GlobalExceptionMiddleware
         }
         catch (Exception ex)
         {
-            // Se registra únicamente el tipo de fallo y el CorrelationId; nunca el cuerpo del documento (Ley 81 de 2019).
+            // Se registra únicamente el tipo de fallo y el CorrelationId sanitizado; nunca el cuerpo del documento (Ley 81 de 2019).
             _logger.LogError(
                 ex,
                 "Error técnico no controlado al procesar {Method} {Path}. CorrelationId: {CorrelationId}",
@@ -53,16 +62,19 @@ public class GlobalExceptionMiddleware
     }
 
     /// <summary>
-    /// Obtiene el identificador de correlación enviado por el cliente o genera uno nuevo si no existe o no es válido.
+    /// Obtiene el identificador de correlación enviado por el cliente si cumple la lista blanca alfanumérica;
+    /// de lo contrario, genera un GUID criptográficamente limpio para evitar Log Forging / CRLF Injection.
     /// </summary>
     private static string ResolveCorrelationId(HttpContext context)
     {
-        if (context.Request.Headers.TryGetValue(CorrelationHeaderName, out var headerValue) &&
-            !string.IsNullOrWhiteSpace(headerValue) &&
-            headerValue.ToString().Length <= 64)
+        if (context.Request.Headers.TryGetValue(CorrelationHeaderName, out var headerValue))
         {
-            context.TraceIdentifier = headerValue.ToString();
-            return context.TraceIdentifier;
+            string candidate = headerValue.ToString().Trim();
+            if (SafeCorrelationIdRegex().IsMatch(candidate))
+            {
+                context.TraceIdentifier = candidate;
+                return context.TraceIdentifier;
+            }
         }
 
         context.TraceIdentifier = Guid.NewGuid().ToString("N");

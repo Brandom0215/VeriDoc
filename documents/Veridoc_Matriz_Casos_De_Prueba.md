@@ -3,7 +3,7 @@
 **Proyecto de pruebas:** `Veridoc.Tests` (xUnit v2.9.3 sobre .NET 10.0)\
 **Comando de verificación:** `dotnet test Veridoc.slnx`\
 **Meta de calidad definida en el proyecto:** $\ge 30$ casos de prueba con un mínimo de $95\%$ de resultados correctos y tiempo $< 500\text{ ms}$.\
-**Resultado real medido:** **38 casos ejecutados | 38 exitosos ($100\%$ de acierto) | Tiempo total de suite: $< 1.0\text{ s}$ ($< 25\text{ ms}$ por caso).**
+**Resultado real medido:** **41 casos ejecutados | 41 exitosos ($100\%$ de acierto) | Tiempo total de suite: $< 1.0\text{ s}$ ($< 25\text{ ms}$ por caso).**
 
 ---
 
@@ -63,3 +63,6 @@
 | 36 | `GlobalExceptionMiddleware_DatabaseConnectionFailure` | Error de conexión a PostgreSQL | Fallo de contexto PostgreSQL con `RequirePersistence = true` | `HTTP 500 Internal Server Error` (`INTERNAL_SERVER_ERROR`) sin filtrar contraseña | `HTTP 500` controlado, secreto no expuesto | PASS |
 | 37 | `HealthController_GetHealth_Returns200Ok` | Disponibilidad / Observabilidad | `GET /api/health` | `HTTP 200 OK` (`status = "Healthy"`) | `HTTP 200 OK` | PASS |
 | 38 | `PostgresConnectionStringHelper_ValidSupabaseUri` | Integración Cloud (Supabase) | URL `postgresql://postgres.abcdefg:MiClave%402026@...pooler.supabase.com:6543/postgres` | Cadena Npgsql con `SSL Mode=Require` y password decodificado | Cadena Npgsql normalizada correctamente | PASS |
+| 39 | `GlobalExceptionMiddleware_MaliciousCorrelationId` | Ciberseguridad (Anti-Log Injection) | `X-Correlation-Id: "fake-id\r\n[INFO] Admin logged in <script>"` | Se descarta la cabecera maliciosa y se asigna un GUID limpio de 32 caracteres | Cabecera sanitizada sin `\r\n` ni `<script>` | PASS |
+| 40 | `ValidateDocumentAsync_OversizedDocumentType` | Ciberseguridad (Anti-Overflow SQL) | `documentType` de 150 caracteres (`> 64` límite `varchar(64)`) | `IsValid = false`, `INVALID_FORMAT` y truncado seguro a 64 caracteres | Rechazado y truncado a 64 caracteres | PASS |
+| 41 | `CedulaValidator_OversizedStringField` | Ciberseguridad (Anti-ReDoS) | Campo `nombreCompleto` de 300 caracteres (`> 200` límite máximo) | Error controlado `INVALID_FORMAT` sin evaluar expresiones regulares pesadas | Error `INVALID_FORMAT` en `nombreCompleto` | PASS |

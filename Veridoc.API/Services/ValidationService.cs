@@ -72,6 +72,30 @@ public class ValidationService : IValidationService
 
         string normalizedType = request.DocumentType.Trim().ToLowerInvariant();
 
+        // Protección contra desbordamiento de columna varchar(64) e inyección de cadenas extensas
+        if (normalizedType.Length > 64)
+        {
+            string truncatedType = normalizedType[..64];
+            var invalidLengthResponse = new ValidationResponseDto
+            {
+                IsValid = false,
+                DocumentType = truncatedType,
+                ValidatedAtUtc = DateTime.UtcNow,
+                Errors = new List<ValidationErrorDto>
+                {
+                    new()
+                    {
+                        Field = "documentType",
+                        Code = "INVALID_FORMAT",
+                        Message = "El campo 'documentType' excede la longitud máxima permitida de 64 caracteres."
+                    }
+                }
+            };
+
+            await TryPersistValidationResultAsync(invalidLengthResponse, correlationId, cancellationToken);
+            return invalidLengthResponse;
+        }
+
         // 2. Comprobar que el tipo de documento esté soportado en el MVP
         if (!_validatorsByType.TryGetValue(normalizedType, out IDocumentValidator? validator))
         {

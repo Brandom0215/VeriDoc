@@ -25,9 +25,11 @@ VeriDoc/
 │   ├── styles.css
 │   └── app.js
 ├── documents/
-│   └── Veridoc_Contexto.md       # Documento de contexto funcional, técnico y decisiones del MVP
-├── docker-compose.yml            # Contenedor PostgreSQL 16 listo para desarrollo local
-└── Veridoc.slnx                  # Solución de Visual Studio
+│   ├── Veridoc_Contexto.md                 # Contexto funcional, técnico y decisiones del MVP
+│   ├── Veridoc_Arquitectura_y_Diagramas.md # Diagramas C4, Flujo y Modelo Entidad-Relación
+│   ├── Veridoc_ADR_y_Planificacion.md      # Decisiones de arquitectura (ADR), cronograma y riesgos
+│   └── Veridoc_Matriz_Casos_De_Prueba.md   # Matriz detallada de pruebas automatizadas
+└── Veridoc.slnx                            # Solución de Visual Studio
 ```
 
 ---

@@ -252,4 +252,75 @@ public class ValidationPipelineAndEdgeCasesTests
         Assert.Contains("Password=MiClave@2026", normalized);
         Assert.Contains("SSL Mode=Require", normalized);
     }
+
+    /// <summary>
+    /// Caso 38 (Ciberseguridad): Verifica que GlobalExceptionMiddleware rechace cabeceras X-Correlation-Id
+    /// con caracteres de inyección de logs (CRLF / scripts) y genere un GUID limpio de 32 caracteres hexadecimales.
+    /// </summary>
+    [Fact]
+    public async Task GlobalExceptionMiddleware_MaliciousCorrelationId_SanitizesAgainstLogInjection()
+    {
+        var middleware = new GlobalExceptionMiddleware(
+            _ => Task.CompletedTask,
+            NullLogger<GlobalExceptionMiddleware>.Instance);
+
+        var context = new DefaultHttpContext();
+        context.Request.Headers["X-Correlation-Id"] = "fake-id\r\n[INFO] Admin logged in <script>";
+
+        await middleware.InvokeAsync(context);
+
+        string assignedCorrelationId = context.Response.Headers["X-Correlation-Id"].ToString();
+        Assert.DoesNotContain("\r", assignedCorrelationId);
+        Assert.DoesNotContain("<script>", assignedCorrelationId);
+        Assert.Equal(32, assignedCorrelationId.Length);
+    }
+
+    /// <summary>
+    /// Caso 39 (Ciberseguridad): Verifica que ValidationService rechace un documentType que exceda 64 caracteres
+    /// evitando desbordamientos de columna varchar(64) en PostgreSQL.
+    /// </summary>
+    [Fact]
+    public async Task ValidateDocumentAsync_OversizedDocumentType_ReturnsInvalidFormatAndTruncatesSafely()
+    {
+        ValidationService service = CreateValidationService();
+        using JsonDocument doc = JsonDocument.Parse("""{"campo": "valor"}""");
+
+        var request = new ValidationRequestDto
+        {
+            DocumentType = new string('a', 150),
+            Document = doc.RootElement
+        };
+
+        ValidationResponseDto result = await service.ValidateDocumentAsync(request, "corr-sec-39");
+
+        Assert.False(result.IsValid);
+        Assert.Equal(64, result.DocumentType.Length);
+        Assert.Contains(result.Errors, e => e.Field == "documentType" && e.Code == "INVALID_FORMAT");
+    }
+
+    /// <summary>
+    /// Caso 40 (Ciberseguridad): Verifica que JsonElementHelper rechace campos de texto que superen los 200 caracteres
+    /// para prevenir ataques de denegación de servicio en expresiones regulares (ReDoS).
+    /// </summary>
+    [Fact]
+    public void CedulaValidator_OversizedStringField_ReturnsInvalidFormatError()
+    {
+        var validator = new CedulaIdentidadValidator();
+        string oversizedName = new('X', 300);
+        string json = $$"""
+        {
+          "numeroCedula": "8-888-8888",
+          "nombreCompleto": "{{oversizedName}}",
+          "fechaNacimiento": "1995-05-15",
+          "fechaExpedicion": "2022-06-01",
+          "fechaExpiracion": "2032-06-01",
+          "nacionalidad": "Panameña"
+        }
+        """;
+
+        using JsonDocument doc = JsonDocument.Parse(json);
+        List<ValidationErrorDto> errors = validator.Validate(doc.RootElement);
+
+        Assert.Contains(errors, e => e.Field == "nombreCompleto" && e.Code == "INVALID_FORMAT");
+    }
 }

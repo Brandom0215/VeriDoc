@@ -5,10 +5,16 @@ namespace Veridoc.API.Validators;
 
 /// <summary>
 /// Clase utilitaria para inspeccionar y extraer campos de un <see cref="JsonElement"/> de manera segura,
-/// tolerante a mayúsculas/minúsculas y protegida frente a tipos de datos inesperados en el JSON.
+/// tolerante a mayúsculas/minúsculas y protegida frente a tipos de datos inesperados o cadenas excesivamente largas.
 /// </summary>
 public static class JsonElementHelper
 {
+    /// <summary>
+    /// Longitud máxima permitida para cualquier campo de texto individual en un documento JSON.
+    /// Previene ataques de agotamiento de memoria y denegación de servicio en expresiones regulares (ReDoS).
+    /// </summary>
+    public const int MaxStringFieldLength = 200;
+
     /// <summary>
     /// Busca una propiedad dentro de un objeto JSON ignorando diferencias entre mayúsculas y minúsculas.
     /// </summary>
@@ -43,13 +49,13 @@ public static class JsonElementHelper
     }
 
     /// <summary>
-    /// Extrae de forma segura una cadena de texto de una propiedad JSON.
+    /// Extrae de forma segura una cadena de texto de una propiedad JSON validando su tipo y límite de longitud.
     /// </summary>
     /// <param name="element">Elemento JSON del documento.</param>
     /// <param name="propertyName">Nombre del campo a extraer.</param>
-    /// <param name="stringValue">Valor de texto extraído (recortado con Trim), o <c>null</c> si no existe.</param>
-    /// <param name="isInvalidType">Indica <c>true</c> si la propiedad existe pero no es de tipo String en el JSON.</param>
-    /// <returns><c>true</c> si el campo existe, es de tipo String y contiene texto no vacío.</returns>
+    /// <param name="stringValue">Valor de texto extraído (recortado con Trim), o <c>null</c> si no es válido.</param>
+    /// <param name="isInvalidType">Indica <c>true</c> si la propiedad no es String o excede <see cref="MaxStringFieldLength"/>.</param>
+    /// <returns><c>true</c> si el campo existe, es de tipo String, no está vacío y respeta la longitud máxima.</returns>
     public static bool TryGetNonEmptyString(
         JsonElement element,
         string propertyName,
@@ -73,6 +79,12 @@ public static class JsonElementHelper
         string? raw = propValue.GetString()?.Trim();
         if (string.IsNullOrWhiteSpace(raw))
         {
+            return false;
+        }
+
+        if (raw.Length > MaxStringFieldLength)
+        {
+            isInvalidType = true;
             return false;
         }
 
@@ -107,7 +119,6 @@ public static class JsonElementHelper
             return true;
         }
 
-        // Si el cliente envió un texto numérico o un tipo distinto a Number, se marca como formato/tipo inválido
         isInvalidType = true;
         return false;
     }
