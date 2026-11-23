@@ -29,12 +29,13 @@ builder.Services
         };
     });
 
-// 2. Configuración de Entity Framework Core con PostgreSQL
-string? postgreSqlConnection = builder.Configuration.GetConnectionString("PostgreSqlConnection");
-if (!string.IsNullOrWhiteSpace(postgreSqlConnection))
+// 2. Configuración de Entity Framework Core con PostgreSQL (soporta URL directa de Supabase o formato Host=...)
+string? rawPostgreSqlConnection = builder.Configuration.GetConnectionString("PostgreSqlConnection");
+if (!string.IsNullOrWhiteSpace(rawPostgreSqlConnection))
 {
+    string normalizedConnection = PostgresConnectionStringHelper.Normalize(rawPostgreSqlConnection);
     builder.Services.AddDbContext<VeridocDbContext>(options =>
-        options.UseNpgsql(postgreSqlConnection));
+        options.UseNpgsql(normalizedConnection));
 }
 
 // 3. Registro de validadores de documentos y servicio orquestador de validaciones
