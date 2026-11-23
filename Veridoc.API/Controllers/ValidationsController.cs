@@ -34,9 +34,12 @@ public class ValidationsController : ControllerBase
     /// Devuelve <c>200 OK</c> con <see cref="ValidationResponseDto"/> indicando si el documento es válido o detallando los errores de reglas.
     /// </returns>
     [HttpPost]
+    [Consumes("application/json")]
+    [RequestSizeLimit(65_536)]
     [ProducesResponseType(typeof(ValidationResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorResponseDto), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiErrorResponseDto), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ApiErrorResponseDto), StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(typeof(ApiErrorResponseDto), StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<ValidationResponseDto>> ValidateDocument(
         [FromBody] ValidationRequestDto? request,

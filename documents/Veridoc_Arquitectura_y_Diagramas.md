@@ -15,14 +15,14 @@ Muestra cómo **Veridoc API** interactúa con sus usuarios/actores y con el alma
 
 ```mermaid
 flowchart TD
-    User["Usuario / Evaluador<br/>(Persona que prueba o revisa documentos)"]
-    ClientSys["Sistema Cliente / Integrador<br/>(Aplicación empresarial o Veridoc.DemoClient)"]
-    VeridocSystem["Veridoc API<br/>(Servicio RESTful en ASP.NET Core .NET 10<br/>que valida documentos JSON mediante reglas)"]
-    SupabaseDB[("PostgreSQL en Supabase<br/>(Almacena catálogo de reglas e historial<br/>de auditoría sin datos personales)")]
+    User["Usuario o Evaluador - Introduce datos de prueba y revisa resultados"]
+    ClientSys["Sistema Cliente o Veridoc.DemoClient - Aplicacion consumidora"]
+    VeridocSystem["Veridoc API - Servicio RESTful en ASP.NET Core .NET 10"]
+    SupabaseDB[("PostgreSQL en Supabase - Catalogo de reglas e historial sin datos personales")]
 
-    User -->|"Introduce datos de prueba y visualiza errores"| ClientSys
-    ClientSys -->|"Solicitudes HTTP/HTTPS + JSON<br/>Cabecera X-Api-Key"| VeridocSystem
-    VeridocSystem -->|"Consultas y registros EF Core (SSL / Npgsql)"| SupabaseDB
+    User -->|"Introduce datos y visualiza errores"| ClientSys
+    ClientSys -->|"Solicitudes HTTP/HTTPS + JSON con cabecera X-Api-Key"| VeridocSystem
+    VeridocSystem -->|"Consultas y registros EF Core sobre SSL"| SupabaseDB
 ```
 
 ---
@@ -33,22 +33,22 @@ Muestra los contenedores tecnológicos que conforman la solución completa y có
 
 ```mermaid
 flowchart LR
-    subgraph Cliente ["Entorno del Cliente (Navegador / Sistema Externo)"]
-        DemoUI["Veridoc.DemoClient<br/>(HTML5 + CSS3 + JavaScript Fetch)<br/>Consola web independiente sin lógica de negocio"]
-        SwaggerUI["Swagger UI / Cliente HTTP<br/>(OpenAPI v1 + Veridoc.API.http)"]
+    subgraph Cliente ["Entorno del Cliente Externo"]
+        DemoUI["Veridoc.DemoClient (HTML5 + CSS3 + JS Fetch)"]
+        SwaggerUI["Swagger UI / Cliente HTTP (OpenAPI v1)"]
     end
 
-    subgraph Backend ["Servidor de Aplicación (.NET 10)"]
-        WebApi["Veridoc.API<br/>(ASP.NET Core Web API)<br/>Expone endpoints REST, autentica X-Api-Key,<br/>ejecuta reglas y registra auditoría"]
+    subgraph Backend ["Servidor de Aplicacion (.NET 10)"]
+        WebApi["Veridoc.API (ASP.NET Core Web API)"]
     end
 
     subgraph CloudDB ["Almacenamiento Cloud (Supabase)"]
-        Postgres[("Base de Datos PostgreSQL 16<br/>Esquema public: tipos_documento,<br/>reglas_validacion, validaciones, detalles_error")]
+        Postgres[("PostgreSQL 16 - Esquema public")]
     end
 
-    DemoUI -->|"POST /api/validations<br/>GET /api/validations/document-types<br/>GET /api/validations/history<br/>(CORS + X-Api-Key)"| WebApi
+    DemoUI -->|"POST y GET /api/validations (CORS + X-Api-Key)"| WebApi
     SwaggerUI -->|"HTTP/JSON + X-Api-Key"| WebApi
-    WebApi -->|"TCP/SSL (Puerto 6543 / 5432)<br/>Npgsql + EF Core 10"| Postgres
+    WebApi -->|"TCP/SSL (Puerto 6543) Npgsql + EF Core 10"| Postgres
 ```
 
 ---
@@ -59,40 +59,44 @@ Muestra la separación de responsabilidades interna del proyecto `Veridoc.API`.
 
 ```mermaid
 flowchart TD
-    subgraph Pipeline ["Tubería HTTP (Middlewares)"]
-        ExMw["GlobalExceptionMiddleware<br/>(Asigna X-Correlation-Id y captura errores 500)"]
-        AuthMw["ApiKeyAuthMiddleware<br/>(Valida cabecera X-Api-Key en tiempo constante -> 401)"]
+    subgraph Pipeline ["Tuberia HTTP y Seguridad (Middlewares)"]
+        ExMw["GlobalExceptionMiddleware (X-Correlation-Id y errores 500)"]
+        SecMw["SecurityHeadersMiddleware (Cabeceras HTTP defensivas)"]
+        RateMw["RateLimiter (Proteccion anti-fuerza bruta 429)"]
+        AuthMw["ApiKeyAuthMiddleware (Validacion X-Api-Key en tiempo constante 401)"]
     end
 
     subgraph Controllers ["Capa de Controladores (Delgados)"]
-        HealthCtrl["HealthController<br/>(GET /api/health)"]
-        ValCtrl["ValidationsController<br/>(POST /api/validations, GET document-types, GET history)"]
+        HealthCtrl["HealthController (GET /api/health)"]
+        ValCtrl["ValidationsController (POST /api/validations, GET document-types, GET history)"]
     end
 
     subgraph Services ["Capa de Servicios de Negocio"]
-        ValSvc["ValidationService (IValidationService)<br/>(Orquesta validación, selecciona validador y persiste auditoría)"]
+        ValSvc["ValidationService (IValidationService)"]
     end
 
-    subgraph Validators ["Módulo de Validación (Patrón Strategy)"]
-        IVal["IDocumentValidator<br/>(Contrato común de validación)"]
-        CedVal["CedulaIdentidadValidator<br/>(6 reglas para cedula_identidad)"]
-        FacVal["FacturaComercialValidator<br/>(6 reglas para factura_comercial)"]
-        JsonHelper["JsonElementHelper<br/>(Extracción segura de tipos JSON sin excepciones)"]
+    subgraph Validators ["Modulo de Validacion (Patron Strategy)"]
+        IVal["IDocumentValidator (Interfaz comun)"]
+        CedVal["CedulaIdentidadValidator (6 reglas de cedula_identidad)"]
+        FacVal["FacturaComercialValidator (6 reglas de factura_comercial)"]
+        JsonHelper["JsonElementHelper (Extraccion segura de tipos y longitudes JSON)"]
     end
 
     subgraph DataLayer ["Capa de Acceso a Datos (EF Core)"]
-        DbInit["DbInitializer<br/>(DDL idempotente y seed de las 12 reglas)"]
-        DbCtx["VeridocDbContext<br/>(Mapeo Fluent API de 4 entidades)"]
-        ConnHelper["PostgresConnectionStringHelper<br/>(Normaliza URL postgresql:// de Supabase)"]
+        DbInit["DbInitializer (DDL idempotente y seed de las 12 reglas)"]
+        DbCtx["VeridocDbContext (Mapeo Fluent API de 4 entidades)"]
+        ConnHelper["PostgresConnectionStringHelper (Normaliza URL postgresql de Supabase)"]
     end
 
-    ExMw --> AuthMw
+    ExMw --> SecMw
+    SecMw --> RateMw
+    RateMw --> AuthMw
     AuthMw --> HealthCtrl
     AuthMw --> ValCtrl
     ValCtrl --> ValSvc
     ValSvc --> IVal
-    IVal <|.. CedVal
-    IVal <|.. FacVal
+    IVal -.->|"implementado por"| CedVal
+    IVal -.->|"implementado por"| FacVal
     CedVal --> JsonHelper
     FacVal --> JsonHelper
     ValSvc --> DbCtx
@@ -104,41 +108,43 @@ flowchart TD
 
 ## 2. Diagrama de Flujo de Validación Documental
 
-Representa el recorrido completo de una solicitud desde que ingresa a `Veridoc.API` hasta que devuelve la respuesta JSON diferenciando entre **documento válido**, **documento inválido por reglas**, **solicitud mal formada (`400`)**, **no autorizada (`401`)** y **error técnico (`500`)**.
+Representa el recorrido completo de una solicitud desde que ingresa a `Veridoc.API` hasta que devuelve la respuesta JSON diferenciando entre **documento válido**, **documento inválido por reglas**, **solicitud mal formada (`400`)**, **no autorizada (`401`)**, **límite de peticiones (`429`)** y **error técnico (`500`)**.
 
 ```mermaid
 flowchart TD
-    Start(["Inicio: Solicitud HTTP entrante"]) --> GenCorr["GlobalExceptionMiddleware:<br/>Asignar o leer X-Correlation-Id"]
-    GenCorr --> CheckPublic{"¿Es ruta pública?<br/>(/api/health o /swagger)"}
+    Start(["Inicio: Solicitud HTTP entrante"]) --> GenCorr["GlobalExceptionMiddleware: Validar o generar X-Correlation-Id seguro"]
+    GenCorr --> CheckRate{"RateLimiter: ¿Supera limite por IP?"}
+    CheckRate -->|"Si"| Ret429(["Devolver HTTP 429 Too Many Requests (RATE_LIMIT_EXCEEDED)"])
+    CheckRate -->|"No"| CheckPublic{"¿Es ruta publica? (/api/health o /swagger)"}
 
-    CheckPublic -->|"Sí"| RouteCtrl
-    CheckPublic -->|"No"| CheckKey{"ApiKeyAuthMiddleware:<br/>¿X-Api-Key presente y válida?"}
+    CheckPublic -->|"Si"| RouteCtrl
+    CheckPublic -->|"No"| CheckKey{"ApiKeyAuthMiddleware: ¿X-Api-Key presente y valida?"}
 
-    CheckKey -->|"No"| Ret401(["Devolver HTTP 401 Unauthorized<br/>(ApiErrorResponseDto)"])
-    CheckKey -->|"Sí"| CheckJson{"¿JSON bien formado<br/>y cuerpo no nulo?"}
+    CheckKey -->|"No"| Ret401(["Devolver HTTP 401 Unauthorized (ApiErrorResponseDto)"])
+    CheckKey -->|"Si"| CheckJson{"¿JSON bien formado, <= 64 KB y profundidad <= 16?"}
 
-    CheckJson -->|"No"| Ret400(["Devolver HTTP 400 Bad Request<br/>(INVALID_REQUEST_FORMAT / EMPTY_REQUEST_BODY)"])
-    CheckJson -->|"Sí"| RouteCtrl["ValidationsController:<br/>Delegar a ValidationService"]
+    CheckJson -->|"No"| Ret400(["Devolver HTTP 400 Bad Request (INVALID_REQUEST_FORMAT)"])
+    CheckJson -->|"Si"| RouteCtrl["ValidationsController: Delegar a ValidationService"]
 
-    RouteCtrl --> CheckTypeProvided{"¿documentType<br/>presente?"}
-    CheckTypeProvided -->|"No"| BuildInvalidType["Registrar error REQUIRED_FIELD<br/>en campo documentType"]
+    RouteCtrl --> CheckTypeProvided{"¿documentType presente y <= 64 caracteres?"}
+    CheckTypeProvided -->|"No"| BuildInvalidType["Registrar error REQUIRED_FIELD o INVALID_FORMAT en documentType"]
 
-    CheckTypeProvided -->|"Sí"| CheckTypeSupported{"¿Existe IDocumentValidator<br/>para documentType?"}
+    CheckTypeProvided -->|"Si"| CheckTypeSupported{"¿Existe IDocumentValidator para documentType?"}
     CheckTypeSupported -->|"No"| BuildUnsupported["Registrar error UNSUPPORTED_DOCUMENT_TYPE"]
 
-    CheckTypeSupported -->|"Sí"| CheckDocNode{"¿Nodo document es<br/>un objeto JSON?"}
-    CheckDocNode -->|"No"| BuildMissingDoc["Registrar error REQUIRED_FIELD<br/>en campo document"]
+    CheckTypeSupported -->|"Si"| CheckDocNode{"¿Nodo document es un objeto JSON?"}
+    CheckDocNode -->|"No"| BuildMissingDoc["Registrar error REQUIRED_FIELD en campo document"]
 
-    CheckDocNode -->|"Sí"| RunRules["Ejecutar todas las reglas del validador<br/>(CedulaIdentidadValidator / FacturaComercialValidator)<br/>acumulando incumplimientos en lista errors"]
+    CheckDocNode -->|"Si"| RunRules["Ejecutar todas las reglas del validador acumulando errores"]
 
     BuildInvalidType --> PersistStep
     BuildUnsupported --> PersistStep
     BuildMissingDoc --> PersistStep
-    RunRules --> PersistStep["Persistir auditoría en PostgreSQL (Supabase)<br/>(Validacion + DetalleError, sin guardar datos personales)"]
+    RunRules --> PersistStep["Persistir auditoria en Supabase (Validacion + DetalleError sin datos personales)"]
 
-    PersistStep --> CheckDbError{"¿Ocurrió fallo de BD<br/>con RequirePersistence=true?"}
-    CheckDbError -->|"Sí"| Ret500(["GlobalExceptionMiddleware:<br/>Devolver HTTP 500 Internal Server Error controlado"])
-    CheckDbError -->|"No"| Ret200(["Devolver HTTP 200 OK<br/>(ValidationResponseDto: isValid + errors)"])
+    PersistStep --> CheckDbError{"¿Ocurrio fallo de BD con RequirePersistence=true?"}
+    CheckDbError -->|"Si"| Ret500(["GlobalExceptionMiddleware: Devolver HTTP 500 Internal Server Error controlado"])
+    CheckDbError -->|"No"| Ret200(["Devolver HTTP 200 OK (ValidationResponseDto: isValid + errors)"])
 ```
 
 ---
@@ -154,37 +160,37 @@ erDiagram
     VALIDACIONES ||--o{ DETALLES_ERROR : "registra incumplimientos"
 
     TIPOS_DOCUMENTO {
-        int Id PK "GENERATED BY DEFAULT AS IDENTITY"
-        varchar(64) Codigo UK "Ej. cedula_identidad, factura_comercial"
-        varchar(150) Nombre "Nombre legible del tipo documental"
+        int Id PK "Identificador autoincremental"
+        varchar Codigo UK "Maximo 64 caracteres (cedula_identidad, factura_comercial)"
+        varchar Nombre "Maximo 150 caracteres"
         boolean Activo "Estado de disponibilidad"
         timestamptz FechaCreacionUtc "Fecha de registro UTC"
     }
 
     REGLAS_VALIDACION {
-        int Id PK "GENERATED BY DEFAULT AS IDENTITY"
-        int TipoDocumentoId FK "Referencia a tipos_documento(Id)"
-        varchar(80) Codigo "Ej. REQUIRED_FIELD, UNDERAGE_HOLDER"
-        varchar(150) Nombre "Título corto de la regla"
-        varchar(500) Descripcion "Condición verificada por la regla"
-        boolean Activa "Indica si la regla está activa"
+        int Id PK "Identificador autoincremental"
+        int TipoDocumentoId FK "Referencia a tipos_documento.Id"
+        varchar Codigo "Maximo 80 caracteres (REQUIRED_FIELD, etc.)"
+        varchar Nombre "Maximo 150 caracteres"
+        varchar Descripcion "Maximo 500 caracteres"
+        boolean Activa "Indica si la regla esta activa"
     }
 
     VALIDACIONES {
-        int Id PK "GENERATED BY DEFAULT AS IDENTITY"
+        int Id PK "Identificador autoincremental"
         int TipoDocumentoId FK "Nullable (NULL si tipo no soportado)"
-        varchar(64) CodigoTipoDocumento "Tipo solicitado por el cliente"
-        boolean EsValido "true si TotalErrores = 0"
+        varchar CodigoTipoDocumento "Maximo 64 caracteres"
+        boolean EsValido "true si TotalErrores es 0"
         int TotalErrores "Cantidad de reglas incumplidas"
-        varchar(64) CorrelationId "ID de trazabilidad HTTP"
-        timestamptz FechaValidacionUtc "Fecha y hora UTC de ejecución"
+        varchar CorrelationId "Maximo 64 caracteres"
+        timestamptz FechaValidacionUtc "Fecha y hora UTC de ejecucion"
     }
 
     DETALLES_ERROR {
-        int Id PK "GENERATED BY DEFAULT AS IDENTITY"
-        int ValidacionId FK "Referencia a validaciones(Id) ON DELETE CASCADE"
-        varchar(100) Campo "Nombre del campo que falló (sin su valor personal)"
-        varchar(80) CodigoRegla "Código de la regla incumplida"
-        varchar(500) Mensaje "Explicación del error devuelta al cliente"
+        int Id PK "Identificador autoincremental"
+        int ValidacionId FK "Referencia a validaciones.Id ON DELETE CASCADE"
+        varchar Campo "Maximo 100 caracteres (sin valor personal)"
+        varchar CodigoRegla "Maximo 80 caracteres"
+        varchar Mensaje "Maximo 500 caracteres"
     }
 ```

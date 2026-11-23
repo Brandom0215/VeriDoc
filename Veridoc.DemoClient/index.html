@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src http://localhost:* https://localhost:*; style-src 'self' 'unsafe-inline'; script-src 'self';" />
     <title>Veridoc — Cliente de Demostración de API</title>
     <link rel="stylesheet" href="styles.css" />
 </head>
@@ -37,8 +38,8 @@
                 </div>
                 <div class="form-group">
                     <label for="apiKeyInput">Cabecera <code>X-Api-Key</code></label>
-                    <input type="text" id="apiKeyInput" value="veridoc-dev-key-2026" placeholder="Ingrese la X-Api-Key" />
-                    <small class="help-text">Bórrela o cámbiela para probar el bloqueo <code>401 Unauthorized</code>.</small>
+                    <input type="password" id="apiKeyInput" value="veridoc-dev-key-2026" placeholder="Ingrese la X-Api-Key" autocomplete="off" />
+                    <small class="help-text">Enmascarada contra exposición visual. Bórrela para probar <code>401 Unauthorized</code>.</small>
                 </div>
             </div>
 
